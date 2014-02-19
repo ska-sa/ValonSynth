@@ -28,7 +28,7 @@ Provides a serial interface to the Valon 500x.
 import struct
 # Third party modules
 import serial
-
+import time
 
 __author__ = "Patrick Brandt"
 __copyright__ = "Copyright 2011, Associated Universities, Inc."
@@ -50,9 +50,7 @@ NACK = 0x15
 
 class Synthesizer:
     def __init__(self, port):
-        self.conn = serial.Serial(None, 9600, serial.EIGHTBITS,
-                                  serial.PARITY_NONE, serial.STOPBITS_ONE)
-        self.conn.setPort(port)
+        self.conn = port
 
     def _generate_checksum(self, bytes):
         return chr(sum([ord(b) for b in bytes]) % 256)
@@ -80,7 +78,7 @@ class Synthesizer:
         dbf = dbf_rev_table.get((reg4 >> 20) & 0x07, 1)
         return ncount, frac, mod, dbf
 
-    def get_frequency(self, synth):
+    def get_frequency(self, synth):        
         """
         Returns the current output frequency for the selected synthesizer.
 
@@ -89,12 +87,16 @@ class Synthesizer:
 
         @return: the frequency in MHz (float)
         """
-        self.conn.open()
+                        
+#         self.conn.open()
         bytes = struct.pack('>B', 0x80 | synth)
         self.conn.write(bytes)
-        bytes = self.conn.read(24)
+	#TODO: Flow Control - REMOVE ALL time.sleep(0.1)
+        time.sleep(0.1)
+        bytes = self.conn.read(24)        
         checksum = self.conn.read(1)
-        self.conn.close()
+#         #self.conn.close()
+
         #self._verify_checksum(bytes, checksum)
         ncount, frac, mod, dbf = self._unpack_freq_registers(bytes)
         EPDF = self._getEPDF(synth)
@@ -136,9 +138,10 @@ class Synthesizer:
         else:
             frac = 0
             mod = 1
-        self.conn.open()
+#         self.conn.open()
         bytes = struct.pack('>B', 0x80 | synth)
         self.conn.write(bytes)
+        time.sleep(0.1)        
         old_bytes = self.conn.read(24)
         checksum = self.conn.read(1)
         #self._verify_checksum(old_bytes, checksum)
@@ -147,8 +150,9 @@ class Synthesizer:
                                                       dbf, old_bytes))
         checksum = self._generate_checksum(bytes)
         self.conn.write(bytes + checksum)
+        time.sleep(0.1)
         bytes = self.conn.read(1)
-        self.conn.close()
+        #self.conn.close()
         ack = struct.unpack('>B', bytes)[0]
         return ack == ACK
 
@@ -156,12 +160,13 @@ class Synthesizer:
         """
         Get reference frequency in MHz
         """
-        self.conn.open()
+#         self.conn.open()
         bytes = struct.pack('>B', 0x81)
         self.conn.write(bytes)
+        time.sleep(0.1)
         bytes = self.conn.read(4)
         checksum = self.conn.read(1)
-        self.conn.close()
+        #self.conn.close()
         #self._verify_checksum(bytes, checksum)
         freq = struct.unpack('>I', bytes)[0]
         return freq
@@ -175,12 +180,13 @@ class Synthesizer:
 
         @return: True if success (bool)
         """
-        self.conn.open()
+#         self.conn.open()
         bytes = struct.pack('>BI', 0x01, freq)
         checksum = self._generate_checksum(bytes)
         self.conn.write(bytes + checksum)
+        time.sleep(0.1)
         bytes = self.conn.read(1)
-        self.conn.close()
+#         #self.conn.close()
         ack = struct.unpack('>B', bytes)[0]
         return ack == ACK
 
@@ -194,12 +200,12 @@ class Synthesizer:
         @return: dBm (int)
         """
         rfl_table = {0: -4, 1: -1, 2: 2, 3: 5}
-        self.conn.open()
+#         self.conn.open()
         bytes = struct.pack('>B', 0x80 | synth)
         self.conn.write(bytes)
         bytes = self.conn.read(24)
         checksum = self.conn.read(1)
-        self.conn.close()
+        #self.conn.close()
         #self._verify_checksum(bytes, checksum)
         reg0, reg1, reg2, reg3, reg4, reg5 = struct.unpack('>IIIIII', bytes)
         rfl = (reg4 >> 3) & 0x03
@@ -221,9 +227,10 @@ class Synthesizer:
         rfl_rev_table = {-4: 0, -1: 1, 2: 2, 5: 3}
         rfl = rfl_rev_table.get(rf_level)
         if(rfl is None): return False
-        self.conn.open()
+#         self.conn.open()
         bytes = struct.pack('>B', 0x80 | synth)
         self.conn.write(bytes)
+        time.sleep(0.1)
         bytes = self.conn.read(24)
         checksum = self.conn.read(1)
         #self._verify_checksum(bytes, checksum)
@@ -234,8 +241,9 @@ class Synthesizer:
                             reg0, reg1, reg2, reg3, reg4, reg5)
         checksum = self._generate_checksum(bytes)
         self.conn.write(bytes + checksum)
+        time.sleep(0.1)
         bytes = self.conn.read(1)
-        self.conn.close()
+#         #self.conn.close()
         ack = struct.unpack('>B', bytes)[0]
         return ack == ACK
 
@@ -254,12 +262,13 @@ class Synthesizer:
 
         @return: double (bool), half (bool), r (int), low_spur (bool)
         """
-        self.conn.open()
+#         self.conn.open()
         bytes = struct.pack('>B', 0x80 | synth)
         self.conn.write(bytes)
+        time.sleep(0.1)
         bytes = self.conn.read(24)
         checksum = self.conn.read(1)
-        self.conn.close()
+        #self.conn.close()
         #self._verify_checksum(bytes, checksum)
         reg0, reg1, reg2, reg3, reg4, reg5 = struct.unpack('>IIIIII', bytes)
         low_spur = ((reg2 >> 30) & 1) & ((reg2 >> 29) & 1)
@@ -292,7 +301,7 @@ class Synthesizer:
 
         @return: True if success (bool)
         """
-        self.conn.open()
+#         self.conn.open()
         bytes = struct.pack('>B', 0x80 | synth)
         self.conn.write(bytes)
         bytes = self.conn.read(24)
@@ -307,8 +316,9 @@ class Synthesizer:
                             reg0, reg1, reg2, reg3, reg4, reg5)
         checksum = self._generate_checksum(bytes)
         self.conn.write(bytes + checksum)
+        time.sleep(0.1)
         bytes = self.conn.read(1)
-        self.conn.close()
+        #self.conn.close()
         ack = struct.unpack('>B', bytes)[0]
         return ack == ACK
 
@@ -317,12 +327,13 @@ class Synthesizer:
 
         Returns 1 if the external reference is selected, 0 otherwise.
         """
-        self.conn.open()
+#         self.conn.open()
         bytes = struct.pack('>B', 0x86)
         self.conn.write(bytes)
+        time.sleep(0.1)
         bytes = self.conn.read(1)
         checksum = self.conn.read(1)
-        self.conn.close()
+        #self.conn.close()
         #self._verify_checksum(bytes, checksum)
         is_ext = struct.unpack('>B', bytes)[0]
         return is_ext & 1
@@ -336,12 +347,13 @@ class Synthesizer:
 
         @return: True if success (bool)
         """
-        self.conn.open()
+#         self.conn.open()
         bytes = struct.pack('>BB', 0x06, e_not_i & 1)
         checksum = self._generate_checksum(bytes)
         self.conn.write(bytes + checksum)
+        time.sleep(0.1)
         bytes = self.conn.read(1)
-        self.conn.close()
+        #self.conn.close()
         ack = struct.unpack('>B', bytes)[0]
         return ack == ACK
 
@@ -354,12 +366,13 @@ class Synthesizer:
 
         @return: min,max in MHz
         """
-        self.conn.open()
+#         self.conn.open()
         bytes = struct.pack('>B', 0x83 | synth)
         self.conn.write(bytes)
+        time.sleep(0.1)
         bytes = self.conn.read(4)
         checksum = self.conn.read(1)
-        self.conn.close()
+        #self.conn.close()
         #self._verify_checksum(bytes, checksum)
         min, max = struct.unpack('>HH', bytes)
         return min, max
@@ -379,12 +392,13 @@ class Synthesizer:
 
         @return: True if success (bool)
         """
-        self.conn.open()
+#         self.conn.open()
         bytes = struct.pack('>BHH', 0x03 | synth, min, max)
         checksum = self._generate_checksum(bytes)
         self.conn.write(bytes + checksum)
+        time.sleep(0.1)
         bytes = self.conn.read(1)
-        self.conn.close()
+#         #self.conn.close()
         ack = struct.unpack('>B', bytes)[0]
         return ack == ACK
 
@@ -397,12 +411,12 @@ class Synthesizer:
 
         @return: True if locked (bool)
         """
-        self.conn.open()
+#         self.conn.open()
         bytes = struct.pack('>B', 0x86 | synth)
         self.conn.write(bytes)
         bytes = self.conn.read(1)
         checksum = self.conn.read(1)
-        self.conn.close()
+        #self.conn.close()
         #self._verify_checksum(bytes, checksum)
         mask = (synth << 1) or 0x20
         lock = struct.unpack('>B', bytes)[0] & mask
@@ -417,12 +431,13 @@ class Synthesizer:
 
         @return: str
         """
-        self.conn.open()
+#         self.conn.open()
         bytes = struct.pack('>B', 0x82 | synth)
         self.conn.write(bytes)
+        time.sleep(0.1)
         bytes = self.conn.read(16)
         checksum = self.conn.read(1)
-        self.conn.close()
+#         #self.conn.close()
         #self._verify_checksum(bytes, checksum)
         return bytes
 
@@ -438,12 +453,13 @@ class Synthesizer:
         
         @return: True if success (bool)
         """
-        self.conn.open()
+#         self.conn.open()
         bytes = struct.pack('>B16s', 0x02 | synth, label)
         checksum = self._generate_checksum(bytes)
         self.conn.write(bytes + checksum)
+        time.sleep(0.1)
         bytes = self.conn.read(1)
-        self.conn.close()
+#         #self.conn.close()
         ack = struct.unpack('>B', bytes)[0]
         return ack == ACK
 
@@ -453,12 +469,13 @@ class Synthesizer:
 
         @return: True if success (bool)
         """
-        self.conn.open()
+#         self.conn.open()
         bytes = struct.pack('>B', 0x40)
         checksum = self._generate_checksum(bytes)
         self.conn.write(bytes + checksum)
+        time.sleep(0.1)
         bytes = self.conn.read(1)
-        self.conn.close()
+#         #self.conn.close()
         ack = struct.unpack('>B', bytes)[0]
         return ack == ACK
 
